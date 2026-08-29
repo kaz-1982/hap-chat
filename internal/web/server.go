@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -220,7 +221,13 @@ func (s *Server) chatData(r *http.Request, room model.Room, u model.User) (map[s
 	if err != nil {
 		return nil, err
 	}
+	// SSE を張るまでの間に流れた発言を拾えるよう、描画済みの最後の ID を渡す
+	var lastID uint
+	if len(msgs) > 0 {
+		lastID = msgs[len(msgs)-1].ID
+	}
 	return map[string]any{
+		"LastID":   lastID,
 		"Me":       u,
 		"Room":     room,
 		"Rooms":    s.hub.Rooms(),
@@ -287,6 +294,22 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request, u model.User)
 	sub := s.hub.Subscribe(r.Context(), room.ID, u)
 	defer s.hub.Unsubscribe(sub)
 
+	// 購読より前に流れてしまった発言を先に送る。
+	// ルームを切り替えた直後など、描画と接続の間に投稿があると取りこぼすため。
+	var lastSent uint
+	if after := parseUint(r.URL.Query().Get("after")); after > 0 {
+		missed, err := s.hub.Missed(r.Context(), room.ID, after)
+		if err != nil {
+			log.Printf("catch-up: %v", err)
+		}
+		for _, m := range missed {
+			if err := s.sendEvent(w, rc, u, chat.Event{Kind: "message", RoomID: room.ID, Message: m}); err != nil {
+				return
+			}
+			lastSent = m.ID
+		}
+	}
+
 	// 接続直後の初期状態を送る
 	s.sendEvent(w, rc, u, chat.Event{Kind: "presence", RoomID: room.ID, Users: s.hub.Users(room.ID)})
 	s.sendEvent(w, rc, u, chat.Event{Kind: "typing", RoomID: room.ID, Typing: s.hub.TypingUsers(room.ID)})
@@ -306,6 +329,10 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request, u model.User)
 		case e, ok := <-sub.C:
 			if !ok {
 				return
+			}
+			// 上で送った分と重複させない
+			if e.Kind == "message" && e.Message.ID <= lastSent {
+				continue
 			}
 			if err := s.sendEvent(w, rc, u, e); err != nil {
 				return
@@ -372,6 +399,14 @@ func formColor(r *http.Request) string {
 		}
 	}
 	return Palette[0]
+}
+
+func parseUint(s string) uint {
+	n, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return uint(n)
 }
 
 func truncate(s string, n int) string {

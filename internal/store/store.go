@@ -173,6 +173,19 @@ func (s *Store) Recent(ctx context.Context, roomID uint, limit int) ([]model.Mes
 	return msgs, nil
 }
 
+// Since は afterID より後の発言を古い順で返す。
+// SSE を張る前に投稿された分を拾い直すために使う。
+func (s *Store) Since(ctx context.Context, roomID, afterID uint, limit int) ([]model.Message, error) {
+	var msgs []model.Message
+	err := s.db.WithContext(ctx).
+		Preload("User").
+		Where("room_id = ? AND id > ?", roomID, afterID).
+		Order("id asc").
+		Limit(limit).
+		Find(&msgs).Error
+	return msgs, err
+}
+
 // EnsureWelcome はその部屋がまだ空のときだけ、最初のお知らせを 1 件入れる。
 func (s *Store) EnsureWelcome(ctx context.Context, roomID uint, text string) error {
 	var n int64

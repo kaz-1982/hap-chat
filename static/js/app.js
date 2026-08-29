@@ -240,10 +240,19 @@ let wasAtBottom = true;
 document.addEventListener('DOMContentLoaded', () => {
   const body = document.body;
 
-  // SSE の接続状態をヘッダーの点に反映
-  body.addEventListener('htmx:sseOpen', () => { Alpine.store('ui').connected = true; });
-  body.addEventListener('htmx:sseError', () => { Alpine.store('ui').connected = false; });
-  body.addEventListener('htmx:sseClose', () => { Alpine.store('ui').connected = false; });
+  // SSE の接続状態をヘッダーの点に反映する。
+  // ルームを切り替えると新しい接続が開いたあとに古い接続の close が届くので、
+  // 「いま生きている接続」だけを見る。そうしないと繋がっているのに切断表示になる。
+  let activeSse = null;
+  body.addEventListener('htmx:sseOpen', (e) => {
+    activeSse = e.target;
+    Alpine.store('ui').connected = true;
+  });
+  const dropped = (e) => {
+    if (e.target === activeSse) Alpine.store('ui').connected = false;
+  };
+  body.addEventListener('htmx:sseError', dropped);
+  body.addEventListener('htmx:sseClose', dropped);
 
   // 差し替え前に「一番下にいたか」を覚えておく
   body.addEventListener('htmx:beforeSwap', (e) => {

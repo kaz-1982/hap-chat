@@ -21,11 +21,21 @@ async function joinAs(page: Page, name: string): Promise<void> {
   await expect(page.locator(MESSAGES)).toBeVisible();
 }
 
-async function send(page: Page, text: string): Promise<void> {
+/** その本文を持つ発言カード。テストは共有 DB の上で走るので、常に本文で絞り込む。 */
+function messageWith(page: Page, text: string) {
+  return page.locator(`${MESSAGES} article`).filter({ hasText: text });
+}
+
+/**
+ * 発言して、それが自分の画面に出るところまで確かめる。
+ * expectVisible は、装飾で本文と表示が変わる場合（`code` など）に渡す。
+ */
+async function send(page: Page, text: string, expectVisible: string = text): Promise<void> {
   const input = page.getByPlaceholder(INPUT);
   await input.fill(text);
   await input.press('Enter');
   await expect(input).toHaveValue('');
+  await expect(messageWith(page, expectVisible)).toBeVisible();
 }
 
 test.describe('入室', () => {
@@ -58,9 +68,7 @@ test.describe('発言', () => {
   // Alpine の $el が input を指していて requestSubmit() が呼べていなかったバグの回帰テスト
   test('Enter キーで送信できる', async ({ page }) => {
     await joinAs(page, 'あかり');
-    const text = unique('Enterで送信');
-    await send(page, text);
-    await expect(page.locator(MESSAGES)).toContainText(text);
+    await send(page, unique('Enterで送信'));
   });
 
   test('送信ボタンでも送信できる', async ({ page }) => {
@@ -68,7 +76,7 @@ test.describe('発言', () => {
     const text = unique('ボタンで送信');
     await page.getByPlaceholder(INPUT).fill(text);
     await page.getByRole('button', { name: '送信' }).click();
-    await expect(page.locator(MESSAGES)).toContainText(text);
+    await expect(messageWith(page, text)).toBeVisible();
   });
 
   // 入力欄の「入力中」通知（hx-post）が親フォームの htmx:afterRequest にも届き、
@@ -91,10 +99,10 @@ test.describe('発言', () => {
 
   test('本文の code とメンションが装飾される', async ({ page }) => {
     await joinAs(page, 'あかり');
-    await send(page, '`go test ./...` を @あかり さんへ');
-    const last = page.locator(`${MESSAGES} article`).last();
-    await expect(last.locator('code')).toHaveText('go test ./...');
-    await expect(last.locator('mark')).toHaveText('@あかり');
+    await send(page, '`go test ./...` を @あかり さんへ', 'go test ./...');
+    const card = messageWith(page, 'go test ./...');
+    await expect(card.locator('code')).toHaveText('go test ./...');
+    await expect(card.locator('mark')).toHaveText('@あかり');
   });
 });
 
@@ -115,9 +123,9 @@ test.describe('リアルタイム配信', () => {
     const text = unique('SSEで届く');
     await send(a, text);
 
-    await expect(b.locator(MESSAGES)).toContainText(text);
-    await expect(a.locator(`${MESSAGES} article`).last()).toHaveClass(/is-mine/);
-    await expect(b.locator(`${MESSAGES} article`).last()).not.toHaveClass(/is-mine/);
+    await expect(messageWith(b, text)).toBeVisible();
+    await expect(messageWith(a, text)).toHaveClass(/is-mine/);
+    await expect(messageWith(b, text)).not.toHaveClass(/is-mine/);
 
     await ctxA.close();
     await ctxB.close();
@@ -170,11 +178,10 @@ test.describe('ルーム', () => {
 
     const text = unique('devだけの発言');
     await send(page, text);
-    await expect(page.locator(MESSAGES)).toContainText(text);
 
     await page.getByRole('link', { name: /#general/ }).click();
     await page.waitForURL(/\/r\/general$/);
-    await expect(page.locator(MESSAGES)).not.toContainText(text);
+    await expect(messageWith(page, text)).toHaveCount(0);
   });
 
   test('切り替え後も SSE が繋がっている', async ({ page }) => {
@@ -185,9 +192,7 @@ test.describe('ルーム', () => {
     // 接続インジケータが「接続中」を指していること
     await expect(page.locator('header .conn-dot')).toHaveClass(/is-on/);
 
-    const text = unique('randomで発言');
-    await send(page, text);
-    await expect(page.locator(MESSAGES)).toContainText(text);
+    await send(page, unique('randomで発言'));
   });
 });
 
@@ -253,11 +258,11 @@ test.describe('表示', () => {
     await send(page, miss);
 
     await page.getByPlaceholder('この部屋を絞り込み').fill(hit);
-    await expect(page.locator(MESSAGES)).toContainText(hit);
-    await expect(page.locator(`${MESSAGES} article:not(.is-hidden)`)).toHaveCount(1);
+    await expect(messageWith(page, hit)).toBeVisible();
+    await expect(messageWith(page, miss)).toBeHidden();
 
     await page.getByRole('button', { name: 'クリア' }).click();
-    await expect(page.locator(MESSAGES)).toContainText(miss);
+    await expect(messageWith(page, miss)).toBeVisible();
   });
 
   test('退室すると入室画面に戻る', async ({ page }) => {

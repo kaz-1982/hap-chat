@@ -4,7 +4,7 @@
   中に sse-connect があるので、差し替え = SSE の張り直しになる。
 -->
 <div id="room-shell" class="app-shell"
-     hx-ext="sse" sse-connect="/r/{{.Room.Slug}}/sse"
+     hx-ext="sse" sse-connect="/r/{{.Room.Slug}}/sse?after={{.LastID}}"
      x-data="chatView({ id: '{{.Room.Slug}}', name: '{{.Room.Name}}', icon: '{{.Room.Icon}}', me: '{{.Me.ID}}' })">
 
   <aside class="app-sidebar">
