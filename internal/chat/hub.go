@@ -22,6 +22,7 @@ type Store interface {
 	Rooms(ctx context.Context) ([]model.Room, error)
 	EnsureWelcome(ctx context.Context, roomID uint, text string) error
 	Recent(ctx context.Context, roomID uint, limit int) ([]model.Message, error)
+	Since(ctx context.Context, roomID, afterID uint, limit int) ([]model.Message, error)
 	Add(ctx context.Context, m *model.Message) error
 }
 
@@ -138,6 +139,11 @@ func (h *Hub) Room(slug string) (model.Room, bool) {
 // History はその部屋の直近の発言を古い順で返す。
 func (h *Hub) History(ctx context.Context, roomID uint) ([]model.Message, error) {
 	return h.st.Recent(ctx, roomID, HistoryLimit)
+}
+
+// Missed は afterID より後の発言を返す。SSE を張る前に流れた分の穴埋め。
+func (h *Hub) Missed(ctx context.Context, roomID, afterID uint) ([]model.Message, error) {
+	return h.st.Since(ctx, roomID, afterID, HistoryLimit)
 }
 
 // Subscribe は SSE 接続を登録し、在室リストの更新を全員へ配る。

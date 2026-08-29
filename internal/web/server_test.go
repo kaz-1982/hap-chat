@@ -3,6 +3,7 @@ package web_test
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
@@ -403,6 +404,56 @@ func TestSSEIsScopedToRoom(t *testing.T) {
 	}
 }
 
+// SSE を張る前に投稿された分を、接続時に拾い直せること。
+// ルーム切り替え直後に素早く発言すると、購読より先に投稿が届いてしまうため。
+func TestSSECatchesUpMessagesPostedBeforeSubscribe(t *testing.T) {
+	h := newHarness(t)
+	c := h.join(t, "さくら", "cyan")
+
+	ctx := context.Background()
+	rooms, _ := h.st.Rooms(ctx)
+	before, _ := h.st.Recent(ctx, rooms[0].ID, 100)
+	lastID := before[len(before)-1].ID
+
+	// SSE を張らないまま投稿する
+	c.form("/r/general/messages", url.Values{"text": {"取りこぼした発言"}}).Body.Close()
+
+	// あとから接続すると、その分が流れてくる
+	stream := c.openSSE(fmt.Sprintf("/r/general/sse?after=%d", lastID))
+	stream.await(t, "message", "取りこぼした発言")
+}
+
+// 拾い直した分が、そのあとの配信と重複しないこと。
+func TestSSECatchUpDoesNotDuplicate(t *testing.T) {
+	h := newHarness(t)
+	c := h.join(t, "さくら", "cyan")
+
+	ctx := context.Background()
+	rooms, _ := h.st.Rooms(ctx)
+	before, _ := h.st.Recent(ctx, rooms[0].ID, 100)
+	lastID := before[len(before)-1].ID
+
+	c.form("/r/general/messages", url.Values{"text": {"重複チェック"}}).Body.Close()
+	stream := c.openSSE(fmt.Sprintf("/r/general/sse?after=%d", lastID))
+	stream.await(t, "message", "重複チェック")
+
+	// 2 通目が来ないこと（同じ本文が 2 回流れたら重複している）
+	deadline := time.After(1500 * time.Millisecond)
+	for {
+		select {
+		case e, ok := <-stream.events:
+			if !ok {
+				return
+			}
+			if e.name == "message" && strings.Contains(e.data, "重複チェック") {
+				t.Fatal("同じ発言が 2 回流れた")
+			}
+		case <-deadline:
+			return
+		}
+	}
+}
+
 // ルーム切り替えは断片を返し、URL の書き換えを指示する。
 func TestPanelReturnsFragmentWithPushURL(t *testing.T) {
 	h := newHarness(t)
@@ -427,7 +478,7 @@ func TestPanelReturnsFragmentWithPushURL(t *testing.T) {
 	if strings.Contains(page, "<html") {
 		t.Error("ページ全体が返っている。断片であるべき")
 	}
-	if !strings.Contains(page, `sse-connect="/r/dev/sse"`) {
+	if !strings.Contains(page, `sse-connect="/r/dev/sse?after=`) {
 		t.Error("断片に新しい SSE の接続先が入っていない")
 	}
 }

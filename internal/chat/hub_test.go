@@ -41,6 +41,21 @@ func (f *fakeStore) Recent(_ context.Context, roomID uint, limit int) ([]model.M
 	return out, nil
 }
 
+func (f *fakeStore) Since(_ context.Context, roomID, afterID uint, limit int) ([]model.Message, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []model.Message
+	for _, m := range f.msgs {
+		if m.RoomID == roomID && m.ID > afterID {
+			out = append(out, m)
+		}
+	}
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
 func (f *fakeStore) Add(_ context.Context, m *model.Message) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -140,6 +140,43 @@ func TestRecentLimitKeepsNewest(t *testing.T) {
 	}
 }
 
+// Since は指定 ID より後だけを古い順で返す。
+func TestSinceReturnsOnlyNewer(t *testing.T) {
+	st, ctx := setup(t)
+	rooms, _ := st.Rooms(ctx)
+	room := rooms[0].ID
+	u, _ := st.CreateUser(ctx, "pid-1", "さくら", "cyan")
+
+	var ids []uint
+	for _, body := range []string{"1", "2", "3", "4"} {
+		m := model.Message{RoomID: room, UserID: &u.ID, Kind: model.KindChat, Text: body}
+		if err := st.Add(ctx, &m); err != nil {
+			t.Fatalf("Add: %v", err)
+		}
+		ids = append(ids, m.ID)
+	}
+
+	got, err := st.Since(ctx, room, ids[1], 100)
+	if err != nil {
+		t.Fatalf("Since: %v", err)
+	}
+	if len(got) != 2 || got[0].Text != "3" || got[1].Text != "4" {
+		var texts []string
+		for _, m := range got {
+			texts = append(texts, m.Text)
+		}
+		t.Errorf("Since = %v, want [3 4]", texts)
+	}
+	if got[0].User == nil {
+		t.Error("投稿者が読み込まれていない")
+	}
+
+	// 最新まで読んでいれば何も返らない
+	if rest, _ := st.Since(ctx, room, ids[3], 100); len(rest) != 0 {
+		t.Errorf("最新以降が %d 件返った", len(rest))
+	}
+}
+
 // Preload("User") で投稿者が引けていること（N+1 回避の実装が効いているか）。
 func TestRecentPreloadsAuthor(t *testing.T) {
 	st, ctx := setup(t)
