@@ -1,5 +1,7 @@
 # HAP Chat — htmx + Alpine.js + Pico.css のショーケース
 
+[![CI](https://github.com/kaz-1982/hap-chat/actions/workflows/ci.yml/badge.svg)](https://github.com/kaz-1982/hap-chat/actions/workflows/ci.yml)
+
 リアルタイムのチャットアプリです。**Pico.css の部品をひととおり使い切る**ことを目的に、
 htmx（通信と DOM 差し替え）、Alpine.js（手元の UI 状態）、Go + GORM（サーバーと MySQL）で組んでいます。
 
@@ -32,6 +34,11 @@ go build -o hapchat . && ./hapchat -addr :3000
 
 複数人で試すには、別のブラウザ（またはシークレットウィンドウ）で開いてください。
 参加すると `users` に 1 行できて、署名付き Cookie でそのユーザーに紐づきます。
+
+> **資格情報について**
+> このリポジトリに書かれている `root:root` や `hap:hap`、`dev-secret` は、
+> `127.0.0.1` にだけ公開しているローカル開発用の値です。そのまま外に出さないでください。
+> 本番相当で動かすなら、`HAPCHAT_SECRET` と DSN は環境変数で渡します。
 
 ## ドキュメント
 
@@ -241,3 +248,12 @@ CDN ではなく `static/vendor/` に置いてあるので、オフラインで�
   INSERT / UPDATE しにいきます。発言の保存では `Omit(clause.Associations)` を付けています。
 - MySQL の `utf8mb4` を指定しないと絵文字（4 バイト）が保存できません。
   DSN の `charset=utf8mb4` とサーバー側の `--character-set-server=utf8mb4` の両方が必要です。
+
+---
+
+## ライセンス
+
+このリポジトリのコードは MIT ライセンスです（[LICENSE](LICENSE)）。
+
+`static/vendor/` に同梱している Pico CSS・htmx・Alpine.js は、それぞれの配布条件に従います。
+内訳と原文は [static/vendor/LICENSES.md](static/vendor/LICENSES.md) にまとめてあります。
