@@ -116,6 +116,9 @@ sequenceDiagram
 Hub の `broadcast` は詰まっているチャネルを読み飛ばします。
 遅い 1 接続のせいで全員の配信が止まらないようにするためです。
 
+配信は「そのとき繋がっている接続」にしか届かないので、まだ購読していない相手には届きません。
+その穴の塞ぎ方は次の節に書いています。
+
 ## 4. ルーム切り替え
 
 `#room-shell` を丸ごと差し替えます。差し替えられる HTML の中に `sse-connect` が入っているので、
@@ -131,13 +134,31 @@ sequenceDiagram
 
   U->>W: GET /r/dev/panel （サイドバーの hx-get）
   W->>DB: 直近 200 件を SELECT
-  W-->>U: #35;room-shell の HTML（sse-connect を含む）
+  W-->>U: #35;room-shell の HTML（sse-connect と、描画した最後の ID）
   U->>U: htmx が outerHTML で差し替え<br/>古い要素が消える → 古い EventSource も閉じる
-  U->>W: GET /r/dev/sse （新しい接続）
+  U->>W: GET /r/dev/sse?after=42 （新しい接続）
   W->>H: Subscribe(dev)
+  W->>DB: id > 42 の発言を SELECT
+  W-->>U: 描画と接続の隙間に流れた分を先に送る
   H-->>U: presence / typing の初期状態
   Note over U: HX-Push-Url で URL も /r/dev に更新
 ```
+
+### 描画と接続の隙間
+
+上の図の 1〜5 の間には隙間があります。**パネルを描画してから SSE が繋がるまでの数十ミリ秒**に
+誰かが発言すると、その発言は配信先が居ないまま流れてしまいます。
+自分が素早く発言した場合も同じで、保存はされるのに自分の画面に出ません。
+
+そこで、描画済みの最後の発言 ID を接続時に渡しています。
+
+```html
+sse-connect="/r/{{.Room.Slug}}/sse?after={{.LastID}}"
+```
+
+サーバーは購読を済ませてから `id > after` の分を送り、送った ID 以下はそのあとの配信ループで
+読み飛ばして重複を防ぎます（`internal/web/server.go` の `handleSSE` と `store.Since`）。
+ルーム切り替えだけでなく、最初のページ読み込みにも同じ隙間があるので、両方まとめて塞がります。
 
 ## 5. 状態はどこにあるか
 
@@ -180,7 +201,7 @@ flowchart LR
 | POST | `/profile` | `HX-Redirect` | プロフィール modal |
 | GET | `/r/{room}` | ページ全体 | ブラウザ |
 | GET | `/r/{room}/panel` | `#room-shell` の断片 | htmx（ルーム切り替え） |
-| GET | `/r/{room}/sse` | イベントストリーム | htmx SSE 拡張 |
+| GET | `/r/{room}/sse?after={id}` | イベントストリーム（`after` 以降の取りこぼしも送る） | htmx SSE 拡張 |
 | POST | `/r/{room}/messages` | 204（本文は SSE で届く） | 入力フォーム |
 | POST | `/r/{room}/typing` | 204 | 入力欄（throttle 1.5s） |
 
