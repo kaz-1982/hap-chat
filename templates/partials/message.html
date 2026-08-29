@@ -1,0 +1,18 @@
+{{define "message"}}
+{{- if .Msg.IsSystem -}}
+<p class="msg-system"><small><ins>{{.Msg.Text}}</ins></small></p>
+{{- else -}}
+<article class="msg{{if .Mine}} is-mine{{end}}" data-text="{{.Msg.Text}}">
+  <header>
+    <span class="avatar pico-background-{{.Msg.Author.Color}}-550">{{.Msg.Author.Initial}}</span>
+    <strong>{{.Msg.Author.Name}}</strong>
+    {{if .Mine}}<small class="you-tag">you</small>{{end}}
+    <small class="ts" x-data
+           data-ts="{{.Msg.CreatedAt.Format "2006-01-02T15:04:05Z07:00"}}"
+           data-tooltip="{{.Msg.CreatedAt.Format "2006/01/02 15:04:05"}}" data-placement="left"
+           x-effect="$el.firstChild.nodeValue = $store.ui.relTime($el.dataset.ts)">{{.Msg.CreatedAt.Format "15:04"}}</small>
+  </header>
+  <p>{{richText .Msg.Text}}</p>
+</article>
+{{- end -}}
+{{end}}

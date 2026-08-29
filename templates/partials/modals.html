@@ -1,0 +1,87 @@
+{{define "settings-modal"}}
+<dialog id="settings">
+  <article>
+    <header>
+      <button aria-label="閉じる" rel="prev" @click="closeModal('settings')"></button>
+      <strong>⚙ 設定</strong>
+    </header>
+
+    <label>
+      テーマ
+      <select x-model="$store.ui.theme" @change="$store.ui.applyTheme()">
+        <option value="auto">端末に合わせる</option>
+        <option value="light">ライト</option>
+        <option value="dark">ダーク</option>
+      </select>
+    </label>
+
+    <label>
+      文字サイズ <small><span x-text="$store.ui.fontSize"></span> px</small>
+      <input type="range" min="13" max="20" step="1" x-model.number="$store.ui.fontSize" @input="$store.ui.applyFont()">
+    </label>
+
+    <fieldset>
+      <legend>表示</legend>
+      <label><input type="checkbox" role="switch" x-model="$store.ui.compact" @change="$store.ui.applyCompact()"> コンパクト表示</label>
+      <label><input type="checkbox" role="switch" x-model="$store.ui.showSystem" @change="$store.ui.applySystem()"> 入退室メッセージを表示</label>
+      <label><input type="checkbox" role="switch" x-model="$store.ui.sound"> 新着を音で知らせる</label>
+      <label><input type="checkbox" role="switch" x-model="$store.ui.toastOn"> 新着をトーストで知らせる</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>送信キー</legend>
+      <label><input type="radio" name="sendkey" value="enter" x-model="$store.ui.sendKey"> <kbd>Enter</kbd> で送信（改行は <kbd>Shift</kbd>+<kbd>Enter</kbd>）</label>
+      <label><input type="radio" name="sendkey" value="mod" x-model="$store.ui.sendKey"> <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd> で送信</label>
+    </fieldset>
+
+    <footer>
+      <button class="secondary outline" @click="$store.ui.reset()">既定に戻す</button>
+      <button @click="closeModal('settings')">閉じる</button>
+    </footer>
+  </article>
+</dialog>
+{{end}}
+
+{{define "profile-modal"}}
+<dialog id="profile">
+  <article x-data="{ name: '{{.Me.Name}}', color: '{{.Me.Color}}', busy: false }">
+    <header>
+      <button aria-label="閉じる" rel="prev" @click="closeModal('profile')"></button>
+      <strong>プロフィール</strong>
+    </header>
+
+    <form action="/profile" method="post" hx-post="/profile" hx-swap="none"
+          @htmx:before-request.camel="busy = true" @htmx:after-request.camel="busy = false">
+      <input type="hidden" name="room" :value="$store.ui.room.id">
+
+      <label>
+        表示名
+        <input name="name" x-model="name" maxlength="20" required>
+      </label>
+
+      <fieldset>
+        <legend>アバターの色</legend>
+        <div class="swatches">
+          {{range .Palette}}
+          <label class="swatch" data-tooltip="{{.}}">
+            <input type="radio" name="color" value="{{.}}" x-model="color">
+            <span class="dot pico-background-{{.}}-550"></span>
+          </label>
+          {{end}}
+        </div>
+      </fieldset>
+
+      <p class="preview">
+        プレビュー:
+        <span class="avatar" :class="'pico-background-' + color + '-550'" x-text="name ? name.trim().charAt(0) : '?'"></span>
+        <strong x-text="name"></strong>
+      </p>
+
+      <footer>
+        <button type="button" class="secondary outline" @click="closeModal('profile')">やめる</button>
+        <button type="submit" :aria-busy="busy" :disabled="!name.trim() || busy">保存して再接続</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}

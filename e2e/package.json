@@ -1,0 +1,13 @@
+{
+  "name": "hapchat-e2e",
+  "private": true,
+  "description": "HAP Chat のブラウザ E2E テスト",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0"
+  }
+}

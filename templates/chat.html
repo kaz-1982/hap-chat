@@ -1,0 +1,79 @@
+{{define "chat"}}
+{{template "head" (printf "#%s" .Room.Name)}}
+<body class="app-body" x-data @keydown.window.slash="if (!/^(INPUT|TEXTAREA)$/.test($event.target.tagName)) { $event.preventDefault(); focusComposer() }" @keydown.window.escape="closeTopModal()">
+
+<header class="container-fluid app-header">
+  <nav>
+    <ul>
+      <li><strong class="brand">💬<span class="hide-sm"> HAP&nbsp;Chat</span></strong></li>
+      <li>
+        <!-- Pico のドロップダウン: <details class="dropdown"> だけで動く -->
+        <details class="dropdown room-picker">
+          <summary role="button" class="outline secondary">
+            <span x-text="$store.ui.room.icon">{{.Room.Icon}}</span>
+            <span x-text="'#' + $store.ui.room.name">#{{.Room.Name}}</span>
+          </summary>
+          <ul>
+            {{range .Rooms}}
+            <li>
+              <a href="/r/{{.Slug}}" hx-get="/r/{{.Slug}}/panel" hx-target="#room-shell" hx-swap="outerHTML"
+                 @click="$el.closest('details').open = false">{{.Icon}} #{{.Name}}</a>
+            </li>
+            {{end}}
+          </ul>
+        </details>
+      </li>
+    </ul>
+
+    <ul>
+      <li>
+        <small class="conn" :data-tooltip="$store.ui.connected ? '接続中 (SSE)' : '再接続しています…'" data-placement="bottom">
+          <span class="conn-dot" :class="$store.ui.connected ? 'is-on' : 'is-off'"></span>
+        </small>
+      </li>
+      <li>
+        <label class="theme-switch" data-tooltip="ライト / ダーク" data-placement="bottom">
+          <input type="checkbox" role="switch"
+                 :checked="$store.ui.isDark()"
+                 @change="$store.ui.setTheme($event.target.checked ? 'dark' : 'light')">
+        </label>
+      </li>
+      <li>
+        <button class="outline secondary icon-btn" data-tooltip="設定" data-placement="bottom"
+                @click="openModal('settings')">⚙</button>
+      </li>
+      <li>
+        <details class="dropdown">
+          <summary>
+            <span class="avatar pico-background-{{.Me.Color}}-550">{{.Me.Initial}}</span>
+            <span class="hide-sm">{{.Me.Name}}</span>
+          </summary>
+          <ul dir="rtl">
+            <li><a href="#" @click.prevent="$el.closest('details').open=false; openModal('profile')">プロフィールを編集</a></li>
+            <li><a href="#" hx-post="/leave" hx-swap="none">退室する</a></li>
+          </ul>
+        </details>
+      </li>
+    </ul>
+  </nav>
+</header>
+
+<main class="container-fluid app-main">
+  {{template "room-shell" .}}
+</main>
+
+{{template "settings-modal" .}}
+{{template "profile-modal" .}}
+
+<div class="toasts" x-data>
+  <template x-for="t in $store.ui.toasts" :key="t.id">
+    <article class="toast" x-transition.opacity>
+      <span class="avatar sm" :class="'pico-background-' + t.color + '-550'" x-text="t.initial"></span>
+      <div><strong x-text="t.name"></strong><br><small x-text="t.text"></small></div>
+    </article>
+  </template>
+</div>
+
+</body>
+</html>
+{{end}}

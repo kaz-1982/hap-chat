@@ -1,0 +1,17 @@
+{{define "presence"}}
+<p class="online-count"><small><span class="conn-dot is-on"></span> <strong>{{len .Users}}</strong> 人が接続中</small></p>
+<div class="overflow-auto">
+  <table class="striped user-table">
+    <tbody>
+      {{range .Users}}
+      <tr>
+        <td class="ava-cell"><span class="avatar sm pico-background-{{.Color}}-550">{{.Initial}}</span></td>
+        <td>{{.Name}}{{if eq .ID $.Me.ID}} <small class="you-tag">you</small>{{end}}</td>
+      </tr>
+      {{else}}
+      <tr><td><small>まだ誰もいません</small></td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}

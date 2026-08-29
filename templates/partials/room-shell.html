@@ -1,0 +1,107 @@
+{{define "room-shell"}}
+<!--
+  この <div> ごと差し替えることでルームを切り替える。
+  中に sse-connect があるので、差し替え = SSE の張り直しになる。
+-->
+<div id="room-shell" class="app-shell"
+     hx-ext="sse" sse-connect="/r/{{.Room.Slug}}/sse"
+     x-data="chatView({ id: '{{.Room.Slug}}', name: '{{.Room.Name}}', icon: '{{.Room.Icon}}', me: '{{.Me.ID}}' })">
+
+  <aside class="app-sidebar">
+    <nav class="rooms">
+      <ul><li><small class="side-label">ルーム</small></li></ul>
+      <ul>
+        {{range .Rooms}}
+        <li>
+          <a href="/r/{{.Slug}}" hx-get="/r/{{.Slug}}/panel" hx-target="#room-shell" hx-swap="outerHTML"
+             {{if eq .Slug $.Room.Slug}}aria-current="page"{{end}}>
+            <span class="room-icon">{{.Icon}}</span> #{{.Name}}
+          </a>
+        </li>
+        {{end}}
+      </ul>
+    </nav>
+
+    <!-- 在室リストは SSE の presence イベントで丸ごと差し替わる -->
+    <details open>
+      <summary>オンライン</summary>
+      <div id="presence" sse-swap="presence">
+        {{template "presence" (dict "Users" .Users "Me" .Me)}}
+      </div>
+    </details>
+
+    <details>
+      <summary>ショートカット</summary>
+      <table>
+        <tbody>
+          <tr><td><kbd>/</kbd></td><td>入力欄へ</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>ダイアログを閉じる</td></tr>
+          <tr><td><kbd>Enter</kbd></td><td>送信（設定で変更可）</td></tr>
+        </tbody>
+      </table>
+      <small>本文では <code>`code`</code>・URL・<code>@名前</code> が装飾されます。</small>
+    </details>
+
+    <p class="side-foot"><small>Go stdlib · htmx · Alpine.js · Pico.css</small></p>
+  </aside>
+
+  <article class="chat-card">
+    <header class="chat-head">
+      <hgroup>
+        <h2>{{.Room.Icon}} #{{.Room.Name}}</h2>
+        <p>{{.Room.Topic}}</p>
+      </hgroup>
+      <form role="search" @submit.prevent>
+        <input type="search" placeholder="この部屋を絞り込み" x-model="filter" @input="applyFilter()" aria-label="メッセージを絞り込み">
+        <button type="button" class="secondary" @click="filter = ''; applyFilter()">クリア</button>
+      </form>
+    </header>
+
+    <div id="messages" class="messages" sse-swap="message" hx-swap="beforeend" x-ref="messages">
+      {{range .Messages}}{{template "message" (msgview . $.Me)}}{{end}}
+    </div>
+
+    <footer class="composer-wrap">
+      <div id="typing" class="typing-slot" sse-swap="typing" aria-live="polite"></div>
+
+      <!-- action/method を書いておくと、htmx がまだ処理していない一瞬に Enter を押されても
+           ネイティブ送信が同じ POST になる（ルーム切り替え直後の取りこぼし防止）。 -->
+      <form action="/r/{{.Room.Slug}}/messages" method="post"
+            hx-post="/r/{{.Room.Slug}}/messages" hx-swap="none"
+            x-data="composer()"
+            @submit="pending = draft"
+            @htmx:before-request.camel.self="sending = true"
+            @htmx:after-request.camel.self="sent($event)">
+        <fieldset role="group">
+          <details class="dropdown emoji-picker">
+            <summary role="button" class="secondary" data-tooltip="絵文字" data-placement="top" aria-label="絵文字">😀</summary>
+            <ul>
+              <li class="emoji-grid">
+                <template x-for="e in emojis" :key="e">
+                  <button type="button" class="outline" x-text="e"
+                          @click="insert(e); $el.closest('details').open = false"></button>
+                </template>
+              </li>
+            </ul>
+          </details>
+
+          <input type="text" name="text" autocomplete="off" placeholder="メッセージを入力…"
+                 x-ref="input" x-model="draft" maxlength="1000"
+                 :aria-invalid="draft.length > 900 ? 'true' : null"
+                 @keydown="onKey($event)"
+                 hx-post="/r/{{.Room.Slug}}/typing" hx-trigger="input changed throttle:1.5s" hx-swap="none">
+
+          <button type="submit" :aria-busy="sending" :disabled="!draft.trim() || sending">送信</button>
+        </fieldset>
+
+        <small class="composer-hint">
+          <span x-text="draft.length + ' / 1000'">0 / 1000</span>
+          ·
+          <kbd x-text="$store.ui.sendKey === 'enter' ? 'Enter' : 'Ctrl+Enter'">Enter</kbd> で送信
+          · <code>`code`</code> と <code>@名前</code> が使えます
+        </small>
+      </form>
+    </footer>
+  </article>
+</div>
+{{end}}

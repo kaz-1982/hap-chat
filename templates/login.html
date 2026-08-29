@@ -1,0 +1,62 @@
+{{define "login"}}
+{{template "head" "ようこそ"}}
+<body class="login-body">
+<main class="container">
+  <article class="login-card" x-data="joinForm">
+    <header>
+      <hgroup>
+        <h1>💬 HAP Chat</h1>
+        <p><strong>h</strong>tmx + <strong>A</strong>lpine.js + <strong>P</strong>ico.css のショーケース</p>
+      </hgroup>
+    </header>
+
+    <form action="/join" method="post" hx-post="/join" hx-swap="none" @htmx:before-request.camel="busy = true" @htmx:after-request.camel="busy = false">
+      <label>
+        表示名
+        <input name="name" x-model="name" maxlength="20" placeholder="なまえを入力" autocomplete="off"
+               required :aria-invalid="touched && !valid ? 'true' : null" @blur="touched = true" autofocus>
+        <small>ルーム内で表示される名前です（20 文字まで）</small>
+      </label>
+
+      <fieldset>
+        <legend>アバターの色</legend>
+        <div class="swatches">
+          {{range $i, $c := .Palette}}
+          <label class="swatch" data-tooltip="{{$c}}">
+            <input type="radio" name="color" value="{{$c}}" x-model="color" {{if eq $i 0}}checked{{end}}>
+            <span class="dot pico-background-{{$c}}-550"></span>
+          </label>
+          {{end}}
+        </div>
+      </fieldset>
+
+      <p class="preview">
+        プレビュー:
+        <span class="avatar" :class="'pico-background-' + color + '-550'" x-text="name ? name.trim().charAt(0) : '?'">?</span>
+        <strong x-text="name || 'ななし'">ななし</strong>
+      </p>
+
+      <button type="submit" :aria-busy="busy" :disabled="!valid || busy">
+        <span x-show="!busy">参加する</span><span x-show="busy" x-cloak>接続中…</span>
+      </button>
+    </form>
+
+    <footer>
+      <details>
+        <summary>この部屋で使えるもの</summary>
+        <ul class="rooms-preview">
+          {{range .Rooms}}<li>{{.Icon}} <strong>#{{.Name}}</strong> — <small>{{.Topic}}</small></li>{{end}}
+        </ul>
+        <blockquote>
+          バックエンドは Go の標準ライブラリのみ。リアルタイム更新は <strong>SSE</strong>、
+          DOM の差し替えは <strong>htmx</strong>、手元の状態は <strong>Alpine.js</strong>、
+          見た目は <strong>Pico.css</strong> のクラスレス CSS が担当します。
+          <footer><cite>— 構成メモ</cite></footer>
+        </blockquote>
+      </details>
+    </footer>
+  </article>
+</main>
+</body>
+</html>
+{{end}}
