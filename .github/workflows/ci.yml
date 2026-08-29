@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# 同じブランチへ続けて push したときは、古い実行を打ち切る
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # 結合テストと E2E が使う MySQL。docker-compose.yml と同じ資格情報にしてある。
+  MYSQL_ROOT_PASSWORD: root
+  HAPCHAT_TEST_DSN: "root:root@tcp(127.0.0.1:3306)/hapchat_test?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true"
+  E2E_DSN: "root:root@tcp(127.0.0.1:3306)/hapchat_e2e?charset=utf8mb4&parseTime=True&loc=Local"
+
+jobs:
+  # ---------------------------------------------------------------
+  # 単体 + 結合。競合検出つきで走らせる（Hub は goroutine 前提のため）
+  # ---------------------------------------------------------------
+  go:
+    name: Go（単体・結合）
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: gofmt が通っているか
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "gofmt がかかっていないファイル:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: ビルド
+        run: go build ./...
+
+      - name: テスト（-race）
+        run: go test -race ./...
+
+  # ---------------------------------------------------------------
+  # 本物のブラウザで動かす E2E
+  # ---------------------------------------------------------------
+  e2e:
+    name: E2E（Playwright）
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: 依存の取得
+        working-directory: e2e
+        run: npm ci
+
+      - name: Chromium の取得
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E
+        working-directory: e2e
+        run: npm test
+
+      - name: 失敗時のレポートを残す
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 7

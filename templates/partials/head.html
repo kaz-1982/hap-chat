@@ -1,0 +1,28 @@
+{{define "head"}}<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{.}} · HAP Chat</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+  <link rel="stylesheet" href="/static/vendor/pico.min.css">
+  <link rel="stylesheet" href="/static/vendor/pico.colors.min.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script>
+    // 描画前にテーマと文字サイズを当てて、ちらつきを防ぐ。
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem('hap.ui') || '{}');
+        if (s.theme && s.theme !== 'auto') document.documentElement.dataset.theme = s.theme;
+        if (s.fontSize) document.documentElement.style.setProperty('--app-font', s.fontSize + 'px');
+        if (s.compact) document.documentElement.classList.add('is-compact');
+      } catch (e) {}
+    })();
+  </script>
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  <script src="/static/vendor/htmx-ext-sse.js" defer></script>
+  <script src="/static/js/app.js" defer></script>
+  <script src="/static/vendor/alpine.min.js" defer></script>
+</head>
+{{end}}

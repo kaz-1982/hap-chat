@@ -1,0 +1,47 @@
+# MySQL は Docker で動かし、アプリ（Go）はホストから接続する構成。
+#   docker compose up -d      起動
+#   docker compose logs -f db 起動の様子を見る
+#   docker compose down       停止（データは残る）
+#   docker compose down -v    停止してデータも消す
+services:
+  db:
+    image: mysql:8.4
+    container_name: hapchat-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: hapchat
+      MYSQL_USER: hap
+      MYSQL_PASSWORD: hap
+      TZ: Asia/Tokyo
+    # 日本語と絵文字を通すため utf8mb4 を既定にする
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_0900_ai_ci
+    ports:
+      # 127.0.0.1 を明示する。"3306:3306" と書くと 0.0.0.0 に開いて
+      # 同じ LAN の誰からでも MySQL に入れてしまう。
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uhap", "-phap"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+
+  # テーブルの中身を覗くための管理画面（http://localhost:8081）
+  adminer:
+    image: adminer:5
+    container_name: hapchat-adminer
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - "127.0.0.1:8081:8080"
+
+volumes:
+  mysql-data:

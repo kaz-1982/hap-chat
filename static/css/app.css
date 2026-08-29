@@ -1,0 +1,241 @@
+/* ------------------------------------------------------------------
+   HAP Chat — Pico.css に足りない「アプリの骨格」だけを書いた薄い CSS。
+   色・タイポ・部品の見た目は Pico の CSS 変数をそのまま使う。
+------------------------------------------------------------------- */
+
+:root { --app-font: 16px; }
+html { font-size: var(--app-font); }
+
+[x-cloak] { display: none !important; }
+.is-hidden { display: none !important; }
+
+/* ---------- 入室画面 ---------- */
+.login-body { display: grid; place-items: center; min-height: 100dvh; }
+.login-card { width: 100%; max-width: 34rem; margin-inline: auto; }
+.rooms-preview { margin: 0; }
+.preview { display: flex; align-items: center; gap: .5rem; margin-bottom: var(--pico-spacing); }
+
+/* ---------- アプリ全体の骨格 ---------- */
+.app-body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+
+.app-header {
+  flex: 0 0 auto;
+  border-bottom: var(--pico-border-width) solid var(--pico-muted-border-color);
+  padding-block: 0;
+}
+.app-header nav ul { align-items: center; }
+.app-header nav li { padding-block: .35rem; }
+.app-header label { margin: 0; }
+.brand { white-space: nowrap; }
+.icon-btn { padding: .35rem .7rem; }
+.theme-switch input { margin: 0; }
+
+.app-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-block: var(--pico-block-spacing-vertical);
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  gap: var(--pico-block-spacing-horizontal);
+  height: 100%;
+  min-height: 0;
+}
+@media (max-width: 1023px) {
+  .app-shell { grid-template-columns: minmax(0, 1fr); }
+  .app-sidebar { display: none; }
+}
+@media (max-width: 767px) {
+  .hide-sm { display: none; }
+  .app-header nav li { padding-inline: .1rem; }
+  .app-header .icon-btn { padding: .3rem .55rem; }
+  .app-main { padding-inline: .5rem; }
+  .msg { max-width: 96%; }
+}
+@media (min-width: 1024px) {
+  nav details.room-picker { display: none; }   /* 広い画面ではサイドバーのルーム一覧を使う */
+}
+
+/* ---------- サイドバー ---------- */
+.app-sidebar { overflow-y: auto; padding-right: .25rem; }
+.app-sidebar nav ul { padding: 0; }
+.app-sidebar nav a { border-radius: var(--pico-border-radius); }
+.app-sidebar nav a[aria-current="page"] {
+  background: var(--pico-primary-background);
+  color: var(--pico-primary-inverse);
+  font-weight: 600;
+}
+.side-label { text-transform: uppercase; letter-spacing: .08em; opacity: .7; }
+.side-foot { margin: var(--pico-spacing) 0 0; opacity: .6; }
+.user-table td { padding: .3rem .4rem; }
+.ava-cell { width: 2.2rem; }
+.online-count { margin-bottom: .4rem; }
+
+/* ---------- チャット本体 ---------- */
+.chat-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.chat-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin: 0;
+}
+.chat-head hgroup { margin: 0; }
+.chat-head h2 { margin: 0; font-size: 1.15rem; }
+.chat-head hgroup p { margin: 0; }
+.chat-head form[role="search"] { flex: 1 1 12rem; max-width: 22rem; margin: 0; }
+.chat-head form button { white-space: nowrap; }
+
+.messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden; /* Pico のツールチップ疑似要素が横スクロールを生むのを抑える */
+  overscroll-behavior: contain;
+  padding: var(--pico-block-spacing-vertical) var(--pico-block-spacing-horizontal);
+}
+
+.msg {
+  min-width: 0;
+  margin: 0 0 .6rem;
+  padding: 0;
+  max-width: min(48rem, 88%);
+  border: var(--pico-border-width) solid var(--pico-card-border-color);
+}
+.msg.is-mine { margin-left: auto; border-color: var(--pico-primary); }
+.msg > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem .5rem;
+  margin: 0;
+  padding: .35rem .75rem;
+  background: var(--pico-card-sectioning-background-color);
+}
+.msg > p { margin: 0; padding: .55rem .75rem .7rem; overflow-wrap: anywhere; }
+.msg .ts { margin-left: auto; opacity: .7; white-space: nowrap; }
+.you-tag {
+  padding: 0 .35rem;
+  border-radius: 1rem;
+  background: var(--pico-secondary-background);
+  color: var(--pico-secondary-inverse);
+  font-size: .7em;
+}
+.msg-system { margin: .5rem 0; text-align: center; opacity: .75; }
+
+html.is-compact .msg { margin-bottom: .25rem; box-shadow: none; }
+html.is-compact .msg > header { padding: .15rem .6rem; }
+html.is-compact .msg > p { padding: .15rem .6rem .35rem; }
+html.is-nosys .msg-system { display: none; }
+
+/* ---------- アバター ---------- */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  font-size: .85em;
+  line-height: 1;
+}
+.avatar.sm { width: 1.5rem; height: 1.5rem; font-size: .75em; }
+summary .avatar { vertical-align: middle; }
+
+/* ---------- 入力中インジケータ ---------- */
+.typing-slot {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 1.5rem;
+  padding: 0 var(--pico-block-spacing-horizontal);
+}
+.typing-bar { width: 4rem; margin: 0; }
+.typing-text { opacity: .75; }
+
+/* ---------- 入力欄 ---------- */
+.composer-wrap { margin: 0; }
+.composer-wrap form { margin: 0; }
+.composer-wrap fieldset { margin-bottom: .4rem; }
+.composer-wrap fieldset[role="group"] > button { white-space: nowrap; }
+.composer-hint { display: block; opacity: .7; }
+.emoji-picker > ul { top: auto; bottom: calc(100% + .25rem); min-width: 14rem; }
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: .2rem;
+  padding: .25rem !important;
+}
+.emoji-grid button { margin: 0; padding: .2rem; font-size: 1.1rem; border: none; }
+
+/* ---------- 接続インジケータ ---------- */
+.conn { cursor: default; }
+.conn-dot {
+  display: inline-block;
+  width: .6rem;
+  height: .6rem;
+  border-radius: 50%;
+  background: var(--pico-muted-color);
+}
+.conn-dot.is-on { background: var(--pico-color-jade-450); }
+.conn-dot.is-off { background: var(--pico-color-red-500); animation: blink 1s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+
+/* ---------- 色の選択 ---------- */
+.swatches { display: flex; flex-wrap: wrap; gap: .5rem; }
+.swatch { margin: 0; cursor: pointer; }
+.swatch input { display: none; }
+.swatch .dot {
+  display: block;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: outline-color .15s;
+}
+.swatch input:checked + .dot { outline-color: var(--pico-primary); }
+
+/* ---------- ダイアログ ---------- */
+dialog article > footer,
+dialog article form > footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .5rem;
+}
+dialog article footer button { width: auto; margin: 0; }
+
+/* ---------- トースト ---------- */
+.toasts {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  width: min(20rem, calc(100vw - 2rem));
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin: 0;
+  padding: .6rem .8rem;
+}
+.toast small { opacity: .8; }

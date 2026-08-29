@@ -1,0 +1,6 @@
+{{define "typing"}}
+{{- if .Typing -}}
+<progress class="typing-bar"></progress>
+<small class="typing-text">{{join .Typing "、"}} が入力中…</small>
+{{- end -}}
+{{end}}
